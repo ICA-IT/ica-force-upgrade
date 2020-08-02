@@ -1,0 +1,28 @@
+[Package]
+version: 1
+depends: 
+
+[Product]
+type: localboot
+id: ica-force-upgrade
+name: ica-force-upgrade
+description: Force Windows 10 to install the latest feature upgrade
+advice: 
+version: 1.0
+priority: 0
+licenseRequired: False
+productClasses: 
+setupScript: setup.opsiscript
+uninstallScript: uninstall.opsiscript
+updateScript: 
+alwaysScript: 
+onceScript: 
+customScript: 
+userLoginScript: 
+
+[Changelog]
+ica-force-upgrade (1.0-1) stable; urgency=low
+
+Project created with opsi Package Builder 8.4.4
+
+ -- John Kuras <jkuras@islandchristianacademy.com>  Sun, 02 Aug 2020 13:13:14 +0000

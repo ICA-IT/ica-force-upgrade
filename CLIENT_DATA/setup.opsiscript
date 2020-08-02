@@ -1,0 +1,144 @@
+; ----------------------------------------------------------------
+; Copyright (c) uib gmbh (www.uib.de)
+; This sourcecode is owned by uib
+; and published under the Terms of the General Public License.
+; credits: http://www.opsi.org/en/credits/
+; ----------------------------------------------------------------
+
+;****************************************
+; SETUPTYPE      other
+;****************************************
+; PRODUCTID      ica-force-upgrade
+; SETUPFILE      c:\temp\winupdate\Win10Upgrade.exe
+;****************************************
+; LICENSE        false     
+; PRODUCTDESC    Force Windows 10 to install the latest feature upgrade
+
+; PRODUCTNAME    ica-force-upgrade
+; PRODUCTSIZE    200 MB
+; PRODUCTVER     1.0
+;****************************************
+; SETUPSCRIPT    setup.opsiscript
+; UNINSSCRIPT    uninstall.opsiscript
+;****************************************
+; MSIID          
+; USE-MST        
+; INSTALLDIR     c:\temp\winupdate
+;****************************************
+; TIMESTAMP      8/2/2020 0:31:57
+;****************************************
+
+[Actions]
+requiredWinstVersion >= "4.11.4.3"
+ScriptErrorMessages = false
+
+DefVar $SetupType$
+DefVar $ProductId$ 
+DefVar $Setupfile$ 
+DefVar $InstallDir$
+DefVar $MinimumSpace$
+DefVar $ExitCode$
+DefVar $ErrorMsg$
+DefVar $LicenseRequired$
+DefVar $LicenseKey$
+DefVar $LicensePool$
+DefVar $MsiId$
+DefVar $NsisInstallBatch$
+DefVar $LogDir$
+DefVar $WinVer$
+DefVar $policy$
+DefstringList $policylist$
+
+Set $LogDir$ = "%opsiLogDir%"
+Set $WinVer$ = GetMsVersionInfo
+
+include_append "%ScriptPath%\check_inno_exitcode.opsiscript"
+
+; ----------------------------------------------------------------
+Set $SetupType$       = "inno"
+; ----------------------------------------------------------------
+
+Set $ProductId$       = "ica-force-upgrade"
+Set $Setupfile$       = "Win10Upgrade.exe"
+Set $InstallDir$      = "c:\temp\winupdate"
+Set $LicenseRequired$ = "false"
+Set $LicensePool$     = "p_" + $ProductId$
+Set $MsiId$           = ""
+Set $MinimumSpace$    = "200 MB"
+; ----------------------------------------------------------------
+; ----------------------------------------------------------------
+
+   comment "Show product picture"
+   ShowBitmap "%ScriptPath%\" + $ProductId$ + ".png" $ProductId$
+
+if CompareDotSeparatedNumbers($WinVer$,"<","10.0")
+   LogError $ProductId$ + " requires Windows 10 or later. This system is reporting version " + $WinVer$ 
+   Message "Error: Can not install " + $ProductId$ + " on Windows " + $WinVer$ + " systems... "
+   isFatalError "Wrong Windows version"
+   ; Stop process and set installation status to failed
+endif
+
+if not(HasMinimumSpace ("%SystemDrive%", $MinimumSpace$))
+   LogError "Not enough space on %SystemDrive%, " + $MinimumSpace$ + " on drive %SystemDrive% needed for " + $ProductId$
+   isFatalError "No Space"
+   ; Stop process and set installation status to failed
+else
+
+   if FileExists("%ScriptPath%\delsub.opsiscript")
+      comment "Start uninstall sub section"
+      Sub "%ScriptPath%\delsub.opsiscript"
+   endif
+   
+   Message "Installing " + $ProductId$ + " ..."
+     
+   comment "Start setup program"
+   ChangeDirectory "%SCRIPTPATH%"
+   ;----------------------------------------------
+
+   comment "Create the scratch folder"
+   Files_install
+   
+   comment "Save the current powershell execution policy"
+;   set $policy$ = takeString(1,shellCall('powershell.exe get-executionpolicy'))
+   set $policylist$ = shellCall('powershell.exe get-executionpolicy')
+   set $policy$ = takeString(1,$policylist$)
+   
+   comment "Set the powershell execution policy to permit remote signed scripts"
+   shellCall('powershell.exe set-executionpolicy RemoteSigned')
+   set $policylist$ = shellCall('powershell.exe get-executionpolicy')
+   
+   comment "Execute the powershell script"
+   Execwith_ps powershell.exe winst /sysnative
+   
+   comment "Restore the original powershell execution policy"
+   shellCall('powershell.exe set-executionpolicy '+$policy$)
+   set $policylist$ = shellCall('powershell.exe get-executionpolicy')
+	
+   ;----------------------------------------------
+endif
+
+
+; ----------------------------------------------------------------
+; install section
+; ----------------------------------------------------------------
+
+[Execwith_ps]
+trap { write-output $_ ; exit 1 }
+cd $InstallDir$
+Remove-Item *.exe -Force -Confirm:$false
+$webClient = New-Object System.Net.WebClient
+$url = 'https://go.microsoft.com/fwlink/?LinkID=799445'
+$file = "$InstallDir$\Win10Upgrade.exe"
+$webClient.DownloadFile($url,$file)
+Start-Process -FilePath $file -ArgumentList '/quietinstall /skipeula /auto upgrade /copylogs "$InstallDir$"'
+exit $LASTEXITCODE
+
+[Files_install]
+; Recursively copy files into the installation directory:
+;
+copy -cs "%scriptpath%\files\*.*" $InstallDir$
+
+; ----------------------------------------------------------------
+; ----------------------------------------------------------------
+; ----------------------------------------------------------------
+
