@@ -101,7 +101,7 @@ else
    comment "Save the current powershell execution policy"
 ;   set $policy$ = takeString(1,shellCall('powershell.exe get-executionpolicy'))
    set $policylist$ = shellCall('powershell.exe get-executionpolicy')
-   set $policy$ = takeString(1,$policylist$)
+   set $policy$ = takeString(-1,$policylist$)
    
    comment "Set the powershell execution policy to permit remote signed scripts"
    shellCall('powershell.exe set-executionpolicy RemoteSigned')
